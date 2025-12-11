@@ -98,6 +98,8 @@ bash ./ros_ws/evaluation/example_run_docker.sh gpu
 bash ./ros_ws/evaluation/example_run_docker.sh cpu
 ```
 
+To evaluate the log files, you can use the [eval script](./ros_ws/src/experiment_setup/experiment_setup/eval_exp_managing_systems.py)
+
 ## Setup in Dev Container
 Create the necessary docker network:
 
