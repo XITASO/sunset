@@ -1,0 +1,2 @@
+std_msgs/String communication_name
+std_msgs/String value

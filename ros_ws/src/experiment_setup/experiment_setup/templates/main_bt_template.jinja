@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root BTCPP_format="4"
+      main_tree_to_execute="Main">
+  <BehaviorTree ID="APEComponent">
+    <Sequence>
+      <ExecuteRedeploy component_name="{=}"
+                       adaptations="{=}"
+                       system_state_graph="{=}"/>
+      <ExecuteLifecycle component_name="{=}"
+                        adaptations="{=}"
+                        system_state_graph="{=}"/>
+      <ExecuteCommunicationAdaptation component_name="{=}"
+                                      adaptations="{=}"
+                                      system_state_graph="{=}"/>
+      <ExecuteParametrization component_name="{=}"
+                              adaptations="{=}"
+                              system_state_graph="{=}"/>
+    </Sequence>
+  </BehaviorTree>
+
+  <BehaviorTree ID="Main">
+    <Sequence>
+      <RunOnce then_skip="true">
+        <InitializeBlackboard value_store="{=}"
+                              adaptations="{=}"
+                              executed_strategies="{=}"/>
+      </RunOnce>
+      <Monitoring system_state_graph="{=}"
+                  value_store="{=}"/>
+      <AnalysisDecorator value_store="{=}"
+                         executed_strategies="{=}"
+                         triggered_rules="{=}"
+                         system_state_graph="{=}">
+        <PlanningDecorator triggered_rules="{=}"
+                           system_state_graph="{=}"
+                           value_store="{=}"
+                           adaptations="{=}"
+                           executed_strategies="{=}">
+          <ParallelAll max_failures="1">
+            {% for node in needed_nodes %}
+            <SubTree ID="APEComponent"
+                     component_name="{{ node.full_name }}"
+                     system_state_graph="{=}"
+                     adaptations="{=}"/>
+            {% endfor %}
+          </ParallelAll>
+        </PlanningDecorator>
+      </AnalysisDecorator>
+    </Sequence>
+  </BehaviorTree>
+
+  <TreeNodesModel>
+    <SubTree ID="APEComponent"
+             editable="true">
+      <input_port name="component_name"/>
+      <inout_port name="system_state_graph"/>
+      <inout_port name="adaptations"/>
+    </SubTree>
+    <Decorator ID="AnalysisDecorator"
+               editable="true">
+      <input_port name="value_store"/>
+      <input_port name="executed_strategies"/>
+      <output_port name="triggered_rules"/>
+      <inout_port name="system_state_graph"/>
+    </Decorator>
+    <Action ID="ExecuteCommunicationAdaptation"
+            editable="true">
+      <input_port name="component_name"/>
+      <inout_port name="adaptations"/>
+      <inout_port name="system_state_graph"/>
+    </Action>
+    <Action ID="ExecuteLifecycle"
+            editable="true">
+      <input_port name="component_name"/>
+      <inout_port name="adaptations"/>
+      <inout_port name="system_state_graph"/>
+    </Action>
+    <Action ID="ExecuteParametrization"
+            editable="true">
+      <input_port name="component_name"/>
+      <inout_port name="adaptations"/>
+      <inout_port name="system_state_graph"/>
+    </Action>
+    <Action ID="ExecuteRedeploy"
+            editable="true">
+      <input_port name="component_name"/>
+      <inout_port name="adaptations"/>
+      <inout_port name="system_state_graph"/>
+    </Action>
+    <Action ID="InitializeBlackboard"
+            editable="true">
+      <output_port name="value_store"/>
+      <output_port name="adaptations"/>
+      <output_port name="executed_strategies"/>
+    </Action>
+    <Action ID="Monitoring"
+            editable="true">
+      <inout_port name="system_state_graph"/>
+      <inout_port name="value_store"/>
+    </Action>
+    <Decorator ID="PlanningDecorator"
+               editable="true">
+      <input_port name="triggered_rules"/>
+      <input_port name="system_state_graph"/>
+      <input_port name="value_store"/>
+      <inout_port name="adaptations"/>
+      <output_port name="executed_strategies"/>
+    </Decorator>
+  </TreeNodesModel>
+
+</root>

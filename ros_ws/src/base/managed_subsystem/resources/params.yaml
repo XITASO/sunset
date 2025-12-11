@@ -1,0 +1,36 @@
+camera:
+  ros__parameters:
+    image_degradation: 0.0
+    image_mean_threshold: 25.0 # threshold for the necessary image shift to be considered degraded
+    do_drop_rgb_camera: False
+    do_hard_drop_rgb_camera: False
+    autofocus_needed: False
+    perform_autofocus: False
+
+depth:
+  ros__parameters:
+    depth_degradation: 0.0
+    do_drop_depth_camera: False
+
+sensor_fusion:
+  ros__parameters:
+    topic_camera_input: "rgb_camera"
+    modality: 0  # 0=fusion
+    delta_t_threshold: 0.01 # max time difference between synchronous frames
+    image_shift: 0
+    do_recalibration: False
+    do_drop_sensor_fusion: False
+    do_hard_drop_sensor_fusion: False
+    
+image_enhancement:
+  ros__parameters:
+    image_degradation: 1.5
+    
+segmentation:
+  ros__parameters:
+    do_drop_segmentation: False
+    do_hard_drop_segmentation: False
+    
+blackboard_setter:
+  ros__parameters:
+    

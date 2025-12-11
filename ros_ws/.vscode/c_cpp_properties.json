@@ -1,0 +1,29 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/bt_workspace/install/behaviortree_ros2/include/**",
+        "/bt_workspace/install/btcpp_ros2_interfaces/include/**",
+        "/bt_workspace/install/behaviortree_cpp/include/**",
+        "/opt/ros/humble/include/**",
+        "/home/dockuser/ros_ws/src/managing/bt_mape_k/include/**",
+        "/home/dockuser/ros_ws/src/managing/mapek/include/**",
+        "/home/dockuser/ros_ws/src/bt_sample/include/**",
+        "/home/dockuser/ros_ws/install/system_interfaces/include/system_interfaces/**",
+        "/usr/include/**",
+        "/ws/install/system_modes_msgs/include/system_modes_msgs/**",
+        "/ws/install/system_modes_msgs/include/system_modes/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

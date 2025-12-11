@@ -1,0 +1,12 @@
+evaluator:
+  ros__parameters:
+    delta_t_threshold: 0.01
+    max_buffer_length: 5
+    
+scenario_executor:
+  ros__parameters:
+    scenario_file: seams_eval_example.yaml
+
+experiment_logger:
+  ros__parameters:
+    csv_write_time_period: 2.0

@@ -1,0 +1,8 @@
+# A list of Transitions to execute.
+
+lifecycle_msgs/Transition[] transitions
+
+---
+# Indicates whether setting each transition succeeded or not.
+
+bool[] results

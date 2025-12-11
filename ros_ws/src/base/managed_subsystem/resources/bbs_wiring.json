@@ -1,0 +1,6 @@
+{
+    "/managed_subsystem/rgb_camera":[],
+    "/managed_subsystem/sensors_fused":[],
+    "/managed_subsystem/segmentation":[],
+    "/managed_subsystem/depth_camera":[]
+}
