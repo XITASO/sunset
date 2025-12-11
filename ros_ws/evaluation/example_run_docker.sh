@@ -27,7 +27,7 @@ echo "Starting experiment..."
 
 for i in $(seq 1 $REPEAT); do
     echo "Running experiment set $i..."
-    docker run ${docker_arg} -v ./log_dump:/home/dockuser/ros_ws/log_dump -v ./ros_ws:/ros_ws --rm --name mapek_bt ${docker_image} evaluation/scripts/run_single_experiment.sh baseline ${USE_CPU}
+    docker run ${docker_arg} -v ./log_dump:/home/dockuser/ros_ws/log_dump -v ./ros_ws:/ros_ws --rm --name sunset_run ${docker_image} evaluation/scripts/run_single_experiment.sh baseline ${USE_CPU}
 
     echo "experiment #$i finished. Preparing for next experiment..."
     sleep 5

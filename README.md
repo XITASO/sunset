@@ -1,7 +1,5 @@
 # Getting started with SUNSET
 
-[[_TOC_]]
-
 ## Further documentation
 For detailed information 
 - about the system, how to evaluate experiments and how to extend the artifact, we refer to this [documentation](./system_description.md).
@@ -70,11 +68,31 @@ The logs will be stored in a folder `log_dump` next to the ros_ws directory.
 
 Run the experiment from the root of the repository with one of the two following options (GPU or CPU). 
 We recommend to use the GPU since there is a neural network running in SUNSET that runs smoother on the GPU.
-### Running on GPU
+### First check to see if everything is running
+
+#### Running on GPU
+```bash
+bash ./ros_ws/evaluation/test_runner_docker.sh gpu
+```
+
+#### Running on CPU
+
+```bash
+bash ./ros_ws/evaluation/test_runner_docker.sh cpu
+```
+
+After the script has finished, you should see a new log file in the `log_dump` folder. 
+If you see that: Congratulations, you did everything right and were able to run a baseline managing system on SUNSET!
+
+### Running a whole experiment
+
+If you now want to evaluate the baseline system on all possible scenarios, you can run the following commands:
+#### Running on GPU
 ```bash
 bash ./ros_ws/evaluation/example_run_docker.sh gpu
 ```
-### Running on CPU
+
+#### Running on CPU
 
 ```bash
 bash ./ros_ws/evaluation/example_run_docker.sh cpu
@@ -90,20 +108,29 @@ docker network create sunset-network
 There is a devcontainer file, i.e. you can just open VSCode in the root of this repository and reopen VSCode in the devcontainer. 
 This should do the rest.
 
+Watch out: If you ran experiments with docker before and then start an experiment in the dev container, be sure to remove the `build` and `install` directory beforehand.
+Otherwise colcon build will fail since the paths are different when running as docker container compared to the dev container.
+
+The sudo password for the dockuser inside the dev container is also `dockuser`.
+
+```bash
+sudo rm -r build/ install/ log/
+```
+
 ### Running on GPU
 Note: By default we use the GPU to run our experiments. If you want to run experiments inside of the dev container, you can use the following script:
 
 ```bash
-bash ./ros_ws/evaluation/example_run_local.sh gpu
+bash ./evaluation/test_runner_local.sh gpu
 ```
 The logs will be stored in a folder `log_dump` next to the ros_ws directory.
 
 ### Running on CPU
-If you'd like to run them on your CPU make sure to remove the `-cuda` tag from the image in the [devcontainer.json](.devcontainer/devcontainer.json#L5) --> this will significantly impact the pace and therefore the reaction time and system down time of your results.
+If you'd like to run them on your CPU make sure to replace the `cuda` tag from the image with `cpu` in the [devcontainer.json](.devcontainer/devcontainer.json#L5) --> this will significantly impact the pace and therefore the reaction time and system down time of your results.
 
 If you want to run experiments inside of the dev container, you can use the following script:
 ```bash
-bash ./ros_ws/evaluation/example_run_local.sh cpu
+bash ./evaluation/test_runner_local.sh cpu
 ```
 Note: this will significantly impact the duration of your results.
 The segmentation node will perform with a lower frequency which has impacts on the reaction time and system down time of your experiment.

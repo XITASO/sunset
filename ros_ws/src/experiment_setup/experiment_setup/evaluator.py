@@ -54,7 +54,7 @@ class EvaluatorNode(ENGELBaseClass):
         self.last_published_timestamps = {"gt": -1.0, "pred": -1.0}  # Track published timestamps to avoid duplicates
         self.bridge = CvBridge()
         self.segmenter = UAVidSegmenter()
-        self.device = "cuda:1" if torch.cuda.is_available() else "cpu"
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
     def gt_callback(self, msg: Image) -> None:
         self._add_to_buffer("gt", msg)

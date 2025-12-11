@@ -2,7 +2,6 @@ import os
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 import pandas as pd
-# from system_interfaces.msg import AdaptationStatus, StrategyStatus
 import numpy as np
 from typing import Dict
 
@@ -249,7 +248,6 @@ def print_latex(result_dict: Dict[str, Dict[str, Dict[str, float]]]) -> None:
     print("\\begin{tabular}{ccccccc}")
     print("\\toprule")
     print(r"\frac{$Strat_{resolved}$}{$Strat_{exec}$} & Reaction Time (s) & \# $redeploys_{unneccessary}$ & System Downtime (s) & IoU  \\")
-#    print("Dependencies & Criticality Level & System Impact & Stragies Successful & Reaction Time (s) & System Downtime (s) & Adaptations & Hard Drop Segmentation & Image Shift & Autofocus needed & Drop RBG Camera & Hard Drop Sensor Fusion & Image Degredation & Drop Segmentation & Hard Drop RGB Camera \\\\")
     print("\\midrule")
 
     latex_table = []
@@ -297,9 +295,7 @@ def print_latex(result_dict: Dict[str, Dict[str, Dict[str, float]]]) -> None:
         else:
             miou = f"{round_to_significant_figures(miou_mean)} $\\pm$ {round_to_significant_figures(miou_std)}"
 
-        #latex_table.append(f"{flag(deps)} & {flag(crit)} & {flag(cost)} & {strat_success} & {reaction_time} & {down_time} & {unn_redeploys} \\\\") #& {hard_drop_segmentation} & {image_shift} & {autofocus_needed} & {drop_rbg_camera} & {hard_drop_sensor_fusion} & {image_degredation} & {drop_segmentation} & {hard_drop_rgb_camera}\\\\")
-        latex_table.append(f"{strat_success} & {reaction_time} & {unn_redeploys} & {down_time}& {miou} \\\\") #& {hard_drop_segmentation} & {image_shift} & {autofocus_needed} & {drop_rbg_camera} & {hard_drop_sensor_fusion} & {image_degredation} & {drop_segmentation} & {hard_drop_rgb_camera}\\\\")
-
+        latex_table.append(f"{strat_success} & {reaction_time} & {unn_redeploys} & {down_time}& {miou} \\\\")
     # Print table rows and footer
     print("\n".join(latex_table))
     print("\\bottomrule")

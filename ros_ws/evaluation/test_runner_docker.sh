@@ -1,7 +1,5 @@
 #!/bin/bash
 
-MANAGING_SUBSYSTEM=bt_mape_k
-
 if [ "$1" == "gpu" ] || [ "$1" == "cpu" ];
 then
     used_device=$1
@@ -19,6 +17,6 @@ else
     docker_image="rossunset/sunset-artifact:cuda"
 fi
 
-docker run ${docker_arg} -v ./log_dump:/home/dockuser/ros_ws/log_dump -v ./ros_ws:/ros_ws --rm --name mapek_bt ${docker_image} evaluation/scripts/run_single_experiment.sh baseline ${USE_CPU}
+docker run ${docker_arg} -v ./log_dump:/home/dockuser/ros_ws/log_dump -v ./ros_ws:/ros_ws --rm --name sunset_run ${docker_image} evaluation/scripts/run_single_experiment.sh baseline ${USE_CPU}
 
 

@@ -76,8 +76,7 @@ class UAVidSegmenter:
             "rgb": deeplabv3_resnet50(num_classes=28, weights=None, weights_backbone=None),
             "depth": deeplabv3_resnet50(num_classes=28, weights=None, weights_backbone=None),
         }
-        self.device = "cuda:1" if torch.cuda.is_available() else "cpu"
-        #self.device = "cpu" 
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         try:
             logger.info(f"Running on device {self.device}")
