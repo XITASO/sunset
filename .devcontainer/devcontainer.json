@@ -1,0 +1,64 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-dockerfile
+{
+	"name": "SUNSET",
+	"image": "rossunset/sunset-artifact:cpu",
+	
+
+	"mounts": [
+		{
+			"source": "./ros_ws/",
+			"target": "/home/dockuser/ros_ws",
+			"type": "bind"
+		},
+		{
+			"source": "./log_dump/",
+			"target": "/home/dockuser/ros_ws/log_dump",
+			"type": "bind"
+		}
+	],
+	//"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+	"workspaceFolder": "/home/dockuser/ros_ws",
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+	"runArgs": [
+		"--network=sunset-network",
+		// Mount the X11 socket to communicate with the host's X server
+ 	   "--volume=/tmp/.X11-unix:/tmp/.X11-unix",
+
+ 	   // Pass the DISPLAY environment variable
+ 	   "--env=DISPLAY=:1",
+
+ 	   // If running on a Linux host, you might need to enable access to X server
+ 	   "--env=XAUTHORITY=${XAUTHORITY}"
+	],
+
+	// Uncomment the next line to run commands after the container is created.
+	// "postCreateCommand": "cat /etc/os-release",
+	"postAttachCommand": "grep -qF 'TAG' $HOME/.bashrc || echo 'source /opt/ros/humble/setup.bash && source /home/dockuser/ros_ws/install/setup.bash # TAG' >> $HOME/.bashrc",
+
+	// Configure tool-specific properties.
+	// "customizations": {},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-python.black-formatter",
+				"Ranch-Hand-Robotics.rde-pack",
+				"ms-vscode.cmake-tools",
+				"mechatroner.rainbow-csv",
+				"ms-vscode.cpptools-extension-pack"
+			]
+		}
+	},
+
+	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
+	"remoteUser": "dockuser"
+
+}
+
