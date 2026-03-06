@@ -1,15 +1,13 @@
 import rclpy
 from typing import List
 import os
-import sys
 import yaml
 from system_interfaces.msg import ExperimentLogging
-from system_interfaces.srv import SetHeartbeatStatus, SetFlightPhase
 import subprocess
-import time
 import re
 
-from python_base_class.engel_base_class import ENGELBaseClass, CommunicationTypes
+from python_base_class.engel_base_class import ENGELBaseClass
+from rcl_interfaces.srv import SetParameters
 from experiment_setup.config.scenario_executor_config import comm_types
 from experiment_setup.failure_selector import CriticalitySelector
 
@@ -93,22 +91,49 @@ class ScenarioExecutor(ENGELBaseClass):
                 f"Not all parameters are initialized correctly. Every parameter in \
                     the params.yaml file has to be a class member of {self.get_name()}"
             )
-        
+
     def _first_clock_callback(self):
         """Called once, 1 second after spinning starts."""
-        self.clock_callback()
-        # Cancel the one-shot timer
-        self.first_timer.cancel()
-        # Start the repeating timer for every 60 seconds
-        #self.repeating_timer = self.create_timer(60.0, self.clock_callback)
+        if self.clock_callback() is True:
+            # Cancel the one-shot timer
+            self.first_timer.cancel()
 
-
-    def clock_callback(self):
+    def clock_callback(self) -> bool:
         """Triggers new events from the scenario event list according to timestamp."""
         stamp = self.get_clock().now().nanoseconds
 
+        # First, collect all events for each level
+        events = {}
         for level in ["Failure", "Warning", "Ok"]:
-            event = self.event_selector.select_element(level)
+            try:
+                event = self.event_selector.select_element(level)
+                events[level] = event
+            except ValueError:
+                self.logger.warn(f"No event found for criticality level: {level}")
+                events[level] = None
+
+        # Check if all required services are present before performing adaptations
+        all_services_available = True
+        for level, event in events.items():
+            if event is None:
+                continue
+            
+            if event.get("type") == "parameter_adaptation":
+                service_name = f"{event.get('target_node')}/set_parameters"
+                service_client = self.create_client(SetParameters, service_name)
+                if service_client is None or not service_client.wait_for_service(timeout_sec=1.0):
+                    self.logger.warn(f"Service not available: {service_name}")
+                    all_services_available = False
+
+        # Only proceed with adaptations if all services are available
+        if not all_services_available:
+            self.logger.warn("Not all required services are available. Skipping adaptations.")
+            return False
+
+        # Now perform the adaptations
+        for level, event in events.items():
+            if event is None:
+                continue
 
             # Failure case produced
             publisher = self.get_comm_object("/bt_executor_log")
@@ -124,17 +149,12 @@ class ScenarioExecutor(ENGELBaseClass):
             # Check for the corresponding action for the event type
             if event["type"] == "parameter_adaptation":
                 self._adapt_parameters(event)
-            elif event["type"] == "lifecycle_change":
-                self._change_lifecycle_state(event)
-            elif event["type"] == "degrade_heartbeat":
-                self._degrade_heartbeat(event)
-            elif event["type"] == "change_flightphase":
-                self._change_flightphase(event)
             else:
                 self.logger.warn(f"Unknown event type {event['type']}")
                 self.logger.info(f"Time: ")
 
             # self.scenario_file = self._get_scenario_identifier()
+        return True
 
     def _get_scenario_identifier(self, file_name: str):
         """
@@ -151,7 +171,7 @@ class ScenarioExecutor(ENGELBaseClass):
         Parameters:
         event (dict): A dict containing the specific values for an event.
         """
-
+        
         # test if opening new process works better
         process = subprocess.Popen(
             args=[
@@ -178,73 +198,12 @@ class ScenarioExecutor(ENGELBaseClass):
         )
         publisher.publish(log_msg) # type: ignore
 
-    def _change_lifecycle_state(self, event: dict):
-        """
-        Change the live cycle state of the target node.
-        
-        Parameters:
-        event (dict): A dict containing the specific values for an event.
-        """
-
-        # No feedback needed, as the on_shutdown function will take care of the exact logging time and success tracking
-        subprocess.Popen(
-            ["ros2", "lifecycle", "set", event["target_node"], event["state"]],
-            stdout=subprocess.PIPE,
-        )
-        self.logger.info(
-            f"New scenario adaptation: {event['target_node']} switching to {event['state']}"
-        )
-
-    def _degrade_heartbeat(self, event: dict) -> None:
-        """
-        Degrade the heartbeat of a node for test purposes.
-        
-        Parameters:
-        event (dict): A dict containing the specific values for an event.
-        """
-        service_cient = self.get_comm_object(
-            event["target_service"], comm_type=CommunicationTypes.SERVICE_CLIENT
-        )
-        while not service_cient.wait_for_service(timeout_sec=1.0): # type: ignore
-            self.get_logger().info("service not available, waiting again...")
-
-        request = SetHeartbeatStatus.Request()
-        request.status = event["value"]
-        future = service_cient.call_async(request) # type: ignore
-
-
-    def _change_flightphase(self, event: dict):
-        """
-        Change the flightphase to a new phase.
-        
-        Parameters:
-        event (dict): A dict containing the specific values for an event.
-        """
-        service_cient = self.get_comm_object(
-            "/set_flight_phase", comm_type=CommunicationTypes.SERVICE_CLIENT
-        )
-        while not service_cient.wait_for_service(timeout_sec=1.0): # type: ignore
-            self.get_logger().info("service not available, waiting again...")
-
-        request = SetFlightPhase.Request()
-        request.flightphase = event["value"]
-        future = service_cient.call_async(request) # type: ignore
-
-        self.logger.info(
-            f"New scenario adaptation: Flightphase changed to {event['value']}."
-        )
-
 
 def main() -> None:
     """
     Main function to initialize and run the ScenarioExecutor.
     """
     rclpy.init()
-
-    # scenario_file = ""
-    # if len(sys.argv) > 1:
-    #     print(f"Using scenario file {sys.argv[1]}")
-    #     scenario_file = sys.argv[1]
 
     test = ScenarioExecutor(comm_types=comm_types)
     rclpy.spin(test)

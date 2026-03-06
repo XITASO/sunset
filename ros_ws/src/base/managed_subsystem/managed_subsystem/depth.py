@@ -35,11 +35,11 @@ class DepthNode(ENGELBaseClass):
         )
         self.depth_degradation = None
         self.do_drop_depth_camera = None
+        self.lifecycle_activation_delay = None
         super().__init__(node_name, comm_types, config_file)
 
-
+        self._activation_timer = None  # Timer for delayed activation
         self.trigger_configure()
-        self.trigger_activate()
 
         self.bridge = CvBridge()
 
@@ -50,7 +50,20 @@ class DepthNode(ENGELBaseClass):
             )
 
     def on_configure(self, state: LifecycleState):
+        """Configure the node - called before activation."""
+        # Schedule activation with a delay specified in parameters
+        delay = self.lifecycle_activation_delay if self.lifecycle_activation_delay is not None else 5.0
+        self._activation_timer = self.create_timer(delay, self._trigger_activation)
+        self.get_logger().info(f"Node configured, there is a simulated delay of {delay} seconds")
         return super().on_configure(state)
+
+    def _trigger_activation(self):
+        """Callback to trigger activation after delay."""
+        if self._activation_timer is not None:
+            self._activation_timer.cancel()
+            self._activation_timer = None
+        # Trigger the activation transition
+        self.trigger_activate()
 
     def depth_callback(self, msg: Image) -> None:
         """

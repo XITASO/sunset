@@ -1,6 +1,6 @@
 import os
 import rclpy
-from rclpy.node import Node
+from rclpy.lifecycle import LifecycleState, Node
 from ros2topic.api import get_topic_names_and_types
 from rcl_interfaces.msg import ParameterValue, Parameter, ParameterType
 
@@ -9,7 +9,6 @@ import json
 from importlib import import_module
 from ament_index_python.packages import get_package_share_directory
 from diagnostic_msgs.msg import DiagnosticArray
-from rclpy.time import Time
 import numpy as np
 
 
@@ -27,7 +26,11 @@ class AbstractBlackboardSetter(Node):
         self._rewiring_table = {}
         self._frequencies = {}
         self._diagnostics = {}
-        self.WINDOW = 4
+        self.WINDOW = 10
+        self.timer_renewed = False
+        self.valid_freqs = False
+        self.lifecycle_activation_delay = None
+        self._activation_timer = None  # Timer for delayed activation
 
         self.create_rewiring_table()
 
@@ -41,22 +44,41 @@ class AbstractBlackboardSetter(Node):
             DiagnosticArray, "/diagnostics", self.diagnostics_callback, 10
         )
 
+        print("\nAll setup: Starting!")
+        self.trigger_configure()
+
+    def on_configure(self, state: LifecycleState):
+        """Configure the node - called before activation."""
+        # Schedule activation with a delay specified in parameters
+        delay = self.lifecycle_activation_delay if self.lifecycle_activation_delay is not None else 5.0
+        self._activation_timer = self.create_timer(delay, self._trigger_activation)
+        self.get_logger().info(f"Node configured, there is a simulated delay of {delay} seconds")
+        return super().on_configure(state)
+
+    def _trigger_activation(self):
+        """Callback to trigger activation after delay."""
+        if self._activation_timer is not None:
+            self._activation_timer.cancel()
+            self._activation_timer = None
         # subscribers
         for key, value_names in self.wirings.items():
             self._subs.append(self.subscription_factory(key, value_names))
 
-        print("\nAll setup: Starting!")
+        self.trigger_activate()
 
     def diagnostics_callback(self, msg: DiagnosticArray):
         for status in msg.status:
-            # if "heartbeat" in status.name:
             #    if not status.name in self._timestamps:
             #        self._timestamps[status.name] = list()
             #    self._timestamps[status.name].append(Time.from_msg(msg.header.stamp).nanoseconds)
             #    self._frequencies[status.name] = self.calculate_frequency(status.name)
             for v in status.values:
-                diagnostic_value = f"{status.hardware_id}_{v.key}"
+                if "lc_state" in v.key:
+                    diagnostic_value = f"{status.name}_{v.key}"
+                else:
+                    diagnostic_value = f"{status.hardware_id}_{v.key}"
                 self._diagnostics[diagnostic_value] = v.value
+
 
     def create_rewiring_table(self):
         """
@@ -85,22 +107,21 @@ class AbstractBlackboardSetter(Node):
                         if value_name == other_value_name:
                             found_duplicates = True
                             self._rewiring_table[other_key][other_value_name] = (
-                                #f"{other_key[1:].replace('/', '_')}/" + other_value_name
-                                other_key[1:] + "/" + other_value_name
+                                f"{other_key[1:].replace('/', '_')}_" + other_value_name
                             )
 
                 if found_duplicates:
                     self._rewiring_table[key][value_name] = (
-                        key[1:] + "/" + value_name
+                        f"{key[1:].replace('/', '_')}_" + value_name
                     )
                 else:
                     # no duplicates? --> just use the raw name
-                    # TODO is this cool all the time? (e.g. heartbeat.status will not be renamed, if it only exists once)
                     self._rewiring_table[key][value_name] = value_name
 
     def calculate_frequency(self, topic) -> float:
         # rather than max i use a sliding window
         if len(self._timestamps[topic]) >= self.WINDOW:
+            self.valid_freqs = True
             timestamps_array = np.array(self._timestamps[topic][-self.WINDOW:][::-1])
             num_msgs = timestamps_array.shape[0]
             now_ns = self.get_clock().now().nanoseconds
@@ -113,7 +134,7 @@ class AbstractBlackboardSetter(Node):
             #    / (self._timestamps[topic][-1] - self._timestamps[topic][0])
             # )
             return freq
-        return 0
+        return 0.
 
     def callback_factory(self, topic, value_names: list):
         """
@@ -133,7 +154,7 @@ class AbstractBlackboardSetter(Node):
                     self.bundle_msg.bb_params.append(bb_msg)
 
                 except Exception as e:
-                    print(f"Had my problems with {e}")
+                    self.get_logger().error(f"Had my problems with {e}")
 
             # handle frequency
             self._timestamps[topic].append(self.get_clock().now().nanoseconds)
@@ -147,7 +168,7 @@ class AbstractBlackboardSetter(Node):
         identifies the topic info and creates a suitable subscription
         """
         topic_types = None
-        print("Searching info for topic: " + topic, "...")
+        self.get_logger().info(f"Searching info for topic: {topic} ...")
         while topic_types is None:
             topic_names_and_types = get_topic_names_and_types(node=self)
             for t_name, t_types in topic_names_and_types:
@@ -155,7 +176,7 @@ class AbstractBlackboardSetter(Node):
                     topic_types = t_types
                     break
         type_str = topic_types[0] if len(topic_types) == 1 else topic_types
-        print("Found type " + type_str)
+        self.get_logger().info(f"Found type {type_str}")
 
         type_str = type_str.replace("/", ".")
         pkg_name = type_str.rsplit(".", 1)
@@ -272,16 +293,39 @@ class AbstractBlackboardSetter(Node):
             )
             self.bundle_msg.bb_params.append(bb_msg)
 
+    def check_for_multiple_uncertainties(self) -> bool:
+        counter = 0
+        for param in self.bundle_msg.bb_params:
+            if 'freq' in param.name:
+                if param.value.double_value < 1.:
+                    counter += 1
+            if 'entropy' in param.name:
+                if param.value.double_value > 0.06:
+                    counter += 1
+
+        if counter >= 2:
+            return True
+        else:
+            return False
+
+    def renew_timer(self):
+        if self.timer_renewed == False:
+            self.timer_renewed = True
+            self.timer.cancel()
+            self.timer = self.create_timer(0.1, self.timer_callback)
+
     def timer_callback(self):
+        
         for topic in self._timestamps.keys():
            self._frequencies[topic] = self.calculate_frequency(topic)
-        self.freq_2_param()
+        if self.valid_freqs:
+            self.freq_2_param()
         self.diagnostics_2_param()
-        #self.generate_mock_data()
 
         self.bb_pub.publish(self.bundle_msg)
+        if self.check_for_multiple_uncertainties():
+            self.renew_timer()
         self.bundle_msg.bb_params.clear()
-
 
 def main():
     rclpy.init()

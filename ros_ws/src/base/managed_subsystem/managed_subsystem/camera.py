@@ -16,7 +16,6 @@ from managed_subsystem.config.camera_config import comm_types
 
 from ament_index_python.packages import get_package_share_directory
 import time
-import cv2
 
 
 class CameraNode(ENGELBaseClass):
@@ -39,37 +38,51 @@ class CameraNode(ENGELBaseClass):
         )
         self.image_degradation = None
         self.image_mean_threshold = None
-        self.do_drop_rgb_camera = None  # should resolve after restart
-        self.do_hard_drop_rgb_camera = None  # should resolve after redeploy
+        self.camera_driver_issue = None # should resolve after restart
+        self.hardware_disconnect = None # should resolve after redeploy
         self.autofocus_needed = None
         self.perform_autofocus = None
-        super().__init__(node_name, comm_types, config_file)
-
-        self.trigger_configure()
-        self.trigger_activate()
+        self.lifecycle_activation_delay = None
+        super().__init__(
+            node_name, comm_types, config_file
+        )
 
         self.bridge = CvBridge()
         self.reset_timer = None  # Timer for resetting image_degradation
+        self._activation_timer = None  # Timer for delayed activation
 
         if not self.validate_parameters():
             self.logger.warn(
                 f"Not all parameters are initialized correctly. Every parameter in \
                     the params.yaml file has to be a class member of {self.get_name()}"
             )
-
+        
+        # Trigger lifecycle transitions after initialization
+        self.trigger_configure()
+    
     def on_configure(self, state: LifecycleState):
-        self.invoke_parameter_change_callback(
-            {
-                "do_hard_drop_rgb_camera": False,
-            }
-        )
-        time.sleep(1)
+        """Configure the node - called before activation."""
+        # Schedule activation with a delay specified in parameters
+        delay = self.lifecycle_activation_delay if self.lifecycle_activation_delay is not None else 5.0
+        self._activation_timer = self.create_timer(delay, self._trigger_activation)
+        self.get_logger().info(f"Node configured, there is a simulated delay of {delay} seconds")
         return super().on_configure(state)
 
+    def _trigger_activation(self):
+        """Callback to trigger activation after delay."""
+        if self._activation_timer is not None:
+            self._activation_timer.cancel()
+            self._activation_timer = None
+        # Trigger the activation transition
+        self.trigger_activate()
+
     def on_activate(self, state: LifecycleState):
+        """Activate the node and handle initialization."""
+        # Invoke parameter change callback immediately
         self.invoke_parameter_change_callback(
             {
-                "do_drop_rgb_camera": False,
+                "camera_driver_issue": False,
+                "image_degradation": 0.,
             }
         )
         return super().on_activate(state)
@@ -87,26 +100,26 @@ class CameraNode(ENGELBaseClass):
         if self.autofocus_needed:
             time.sleep(0.5)
             self.add_diagnostic_value(key="autofocus_needed", value="True")
-
+        
         if self.perform_autofocus:
             self.add_diagnostic_value(key="autofocus_needed", value="False")
             self.invoke_parameter_change_callback(
-                {
-                    "autofocus_needed": False,
-                    "perform_autofocus": False
-                }
-            )
+            {
+                "perform_autofocus": False,
+                "autofocus_needed": False,
+            }
+        )
 
-        if self.image_degradation > 0.0 and self.reset_timer is None:  # type: ignore
+        if self.image_degradation > 0.0 and self.reset_timer is None: # type: ignore
             # If image_degradation is greater than 0.0 and timer is not already set
             self.start_reset_timer()
-
+        
         # drop the image
-        if self.do_drop_rgb_camera or self.do_hard_drop_rgb_camera:
+        if self.camera_driver_issue or self.hardware_disconnect:
 
-            # self.logger.info(
+            #self.logger.info(
             #    f"Dropped msg {msg.header.frame_id} at time {msg.header.stamp.sec+msg.header.stamp.nanosec/1e9:0.3}"
-            # )
+            #)
             # Directly log if message is dropped
             publisher = self.get_comm_object(
                 f"/{self.name}/experiment_log", CommunicationTypes.PUBLISHER
@@ -117,7 +130,7 @@ class CameraNode(ENGELBaseClass):
                 gt_failure_name="camera_image_dropped",
                 is_gt_failure=True,
             )
-            # publisher.publish(log_msg)
+            #publisher.publish(log_msg)
             return
 
         # degrade the image
@@ -139,9 +152,14 @@ class CameraNode(ENGELBaseClass):
         Image: The degraded image message.
         """
         img_array = self.bridge.imgmsg_to_cv2(msg).astype(float)
-        if self.autofocus_needed:
-            img_array = cv2.GaussianBlur(img_array, (0, 0), 1)
         img_array *= 1 - 0.5 * self.image_degradation
+
+        # Simulate degradation detection
+        #is_degraded = self._detect_degradation(img_array)
+
+        #self._publish_degradation(is_degraded=is_degraded, stamp=msg.header.stamp)
+        #if self.image_degradation > 0:
+        #    self._publish_degradation_gt()
 
         msg_new = self.bridge.cv2_to_imgmsg(
             img_array.astype(np.uint8), encoding=msg.encoding
@@ -155,7 +173,7 @@ class CameraNode(ENGELBaseClass):
         """
         self.reset_timer = self.create_timer(
             20.0,  # Duration: 2 seconds
-            self.reset_image_degradation,  # Callback function
+            self.reset_image_degradation  # Callback function
         )
 
     def reset_image_degradation(self):
@@ -194,6 +212,45 @@ class CameraNode(ENGELBaseClass):
         publisher.publish(log_msg)
 
         return response
+
+    def _detect_degradation(self, image: np.ndarray) -> bool:
+        """Performs a check to see, if the image quality is degraded and publishes the degradation state if so."""
+        target_mean = np.array([114.802475, 134.91641386, 136.51041609])
+        current_mean = image.mean(axis=(0, 1))
+
+        if np.mean(np.abs(target_mean - current_mean)) > self.image_mean_threshold:
+            return True
+        return False
+
+    def _publish_degradation(self, is_degraded: bool, stamp: Time) -> None:
+        """
+        Publish the image degradation information.
+        
+        Parameters:
+            is_degraded (bool): Value to publish.
+            stamp: (Time): ROS2 timestamp of image message, which is degraded.
+        """
+        publisher = self.get_comm_object(
+            f"/is_image_degraded", CommunicationTypes.PUBLISHER
+        )
+        out_msg = IsImageDegraded()
+        out_msg.header.frame_id = f"{self.ns}/is_image_degraded"
+        out_msg.header.stamp = stamp
+        out_msg.is_degraded = is_degraded
+        publisher.publish(out_msg)
+
+    def _publish_degradation_gt(self):
+        """Publish a groud truth message, if the image is degraded or not."""
+        publisher = self.get_comm_object(
+            f"/{self.get_name()}/experiment_log", CommunicationTypes.PUBLISHER
+        )
+        log_msg = ExperimentLogging(
+            timestamp=self.get_clock().now().nanoseconds,
+            source=f"/{self.get_name()}/experiment_log",
+            gt_failure_name="camera_degraded",
+            is_gt_failure=True,
+        )
+        publisher.publish(log_msg)
 
 
 def main() -> None:

@@ -69,10 +69,9 @@ class BaselineManagingSystem(Node):
         self._analyze()
         self._plan()
         self._execute()
-        self.get_logger().info("MAPE-K Loop executed")
+        self.get_logger().debug("MAPE-K Loop executed")
 
     def _monitor(self, msg: SetBlackboardGroup):
-        self.get_logger().info("Monitoring executed")
         for param in msg.bb_params:
             if param.value.type == ParameterType.PARAMETER_DOUBLE:
                 self.knowledge_base[param.name] = float(param.value.double_value)

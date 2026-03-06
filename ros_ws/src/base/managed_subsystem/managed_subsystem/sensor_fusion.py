@@ -39,41 +39,49 @@ class SensorFusionNode(ENGELBaseClass):
         self.delta_t_threshold = None
         self.image_shift = None
         self.do_recalibration = None
-        self.do_drop_sensor_fusion = None # should resolve after restart
-        self.do_hard_drop_sensor_fusion = None # should resolve after redeploy
+        self.sync_issue = None # should resolve after restart
+        self.memory_leakage = None # should resolve after redeploy
+        self.lifecycle_activation_delay = None
         super().__init__(node_name, comm_types, config_file, namespace="/managed_subsystem")
 
-        self.trigger_configure()
-        self.trigger_activate()
-
-        # Extended data buffer to hold up to 2 images per modality
-        # Structure: {"rgb": [(Image, timestamp), (Image, timestamp)], "depth": [(Image, timestamp), (Image, timestamp)]}
         self.data_buffer = {
             "depth": [],  # List of (Image, timestamp) tuples
             "rgb": [],    # List of (Image, timestamp) tuples
         }
-        self.max_buffer_size = 6  # Number of images to keep per modality
+        self.max_buffer_size = 15  # Number of images to keep per modality
         self.last_published_timestamps = {"rgb": -1, "depth": -1}  # Track published timestamps to avoid duplicates
+
+        self._activation_timer = None  # Timer for delayed activation
 
         if not self.validate_parameters():
             self.logger.warn(
                 f"Not all parameters are initialized correctly. Every parameter in \
                     the params.yaml file has to be a class member of {self.get_name()}"
             )
+        
+        # Trigger lifecycle transitions after initialization
+        self.trigger_configure()
 
     def on_configure(self, state: LifecycleState):
-        time.sleep(1)
-        self.invoke_parameter_change_callback(
-            {
-                "do_hard_drop_sensor_fusion": False,
-            }
-        )
+        """Configure the node - called before activation."""
+        # Schedule activation with a delay specified in parameters
+        delay = self.lifecycle_activation_delay if self.lifecycle_activation_delay is not None else 5.0
+        self._activation_timer = self.create_timer(delay, self._trigger_activation)
+        self.get_logger().info(f"Node configured, there is a simulated delay of {delay} seconds")
         return super().on_configure(state)
+
+    def _trigger_activation(self):
+        """Callback to trigger activation after delay."""
+        if self._activation_timer is not None:
+            self._activation_timer.cancel()
+            self._activation_timer = None
+        # Trigger the activation transition
+        self.trigger_activate()
 
     def on_activate(self, state: LifecycleState):
         self.invoke_parameter_change_callback(
             {
-                "do_drop_sensor_fusion": False,
+                "sync_issue": False,
             }
         )
         return super().on_activate(state)
@@ -159,6 +167,7 @@ class SensorFusionNode(ENGELBaseClass):
             self.last_published_timestamps["depth"] = depth_pair[1]
         
         return best_match
+    
 
     def shift_image_right(self, cv_image: np.ndarray) -> np.ndarray:
         # Get image dimensions
@@ -194,7 +203,7 @@ class SensorFusionNode(ENGELBaseClass):
         best_match (Optional[Tuple]): A tuple of ((rgb_image, rgb_time), (depth_image, depth_time)) 
                                      if using fusion mode with closest match. None for non-fusion modes.
         """
-        if self.do_drop_sensor_fusion or self.do_hard_drop_sensor_fusion:
+        if self.sync_issue or self.memory_leakage:
             return
 
         if self.do_recalibration:
@@ -241,7 +250,6 @@ class SensorFusionNode(ENGELBaseClass):
 
         publisher = self.get_comm_object("/sensors_fused", comm_type=CommunicationTypes.PUBLISHER)
         publisher.publish(out_msg) # type: ignore
-
 
 
 def main() -> None:

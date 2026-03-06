@@ -33,36 +33,45 @@ class SegmentationNode(ENGELBaseClass):
         config_file = os.path.join(
             get_package_share_directory("managed_subsystem"), "resources", param_file
         )
-        self.do_drop_segmentation = None # should resolve after restart
-        self.do_hard_drop_segmentation = None # should resolve after redeploy
+        self.cuda_out_of_memory = None # should resolve after restart
+        self.gpu_failure = None # should resolve after redeploy
+        self.lifecycle_activation_delay = None
         super().__init__(node_name, comm_types, config_file, namespace="managed_subsystem")
-
-        self.trigger_configure()
-        self.trigger_activate()
 
         self.segmenter = UAVidSegmenter(checkpoints_path=".data/checkpoints", logger=self.logger)
         self.bridge = CvBridge()
         self.entropy_values = list()
+        self._activation_timer = None  # Timer for delayed activation
 
         self.map_modality2string = {
             0: "fusion",
             1: "rgb",
             2: "depth",
         }
+        
+        # Trigger lifecycle transitions after initialization
+        self.trigger_configure()
 
     def on_configure(self, state: State) -> TransitionCallbackReturn:
-        self.invoke_parameter_change_callback(
-            {
-                "do_hard_drop_segmentation": False,
-            }
-        )
-        time.sleep(1)
+        """Configure the node - called before activation."""
+        # Schedule activation with a delay specified in parameters
+        delay = self.lifecycle_activation_delay if self.lifecycle_activation_delay is not None else 5.0
+        self._activation_timer = self.create_timer(delay, self._trigger_activation)
+        self.get_logger().info(f"Node configured, there is a simulated delay of {delay} seconds")
         return super().on_configure(state)
+
+    def _trigger_activation(self):
+        """Callback to trigger activation after delay."""
+        if self._activation_timer is not None:
+            self._activation_timer.cancel()
+            self._activation_timer = None
+        # Trigger the activation transition
+        self.trigger_activate()
 
     def on_activate(self, state: LifecycleState):
         self.invoke_parameter_change_callback(
             {
-                "do_drop_segmentation": False,
+                "cuda_out_of_memory": False,
             }
         )
         return super().on_activate(state)
@@ -74,7 +83,7 @@ class SegmentationNode(ENGELBaseClass):
         Parameters:
         fusion_data (SensorFusion): The ROS message containing sensor fusion data.
         """
-        if self.do_drop_segmentation or self.do_hard_drop_segmentation:
+        if self.cuda_out_of_memory or self.gpu_failure:
             return
         # In try statement, as image encoding is sometimes not recognized on first image during startup. Will skip these.
         try:

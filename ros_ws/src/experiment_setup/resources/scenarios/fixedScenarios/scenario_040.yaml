@@ -5,7 +5,7 @@
   value: 1.5
   criticality_level: Warning
 - is_gt_failure: true
-  name: do_hard_drop_rgb_camera
+  name: hardware_disconnect
   target_node: /managed_subsystem/camera
   type: parameter_adaptation
   value: true
