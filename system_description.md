@@ -69,6 +69,18 @@ To retrieve our log files you can get them from the same server as above:
 
 # Extending the artifact
 
+
+
+## Different image sequences
+SUNSET is based on the [SynDrone dataset](https://github.com/LTTM/Syndrone) and uses a subset of images from Town 01.
+If you want to use different images or completely different datasets in your setup, you can create a new ROS bag for this with [this script](./tools/ros_bag_creator.py)
+
+In case you use a different dataset, you might also want to change the segmentation model since the models used in SUNSET are trained from scratch on the SynDrone dataset.
+Therefore adapt the implementation in [this class](./ros_ws/src/base/managed_subsystem/managed_subsystem/utils/segmentation_logic.py) or add your own implementation and just replace the model in the [segmentation node](./ros_ws/src/base/managed_subsystem/managed_subsystem/segmentation.py)
+
+## New ROS Nodes
+
+Since the SynDrone dataset allows also to perform object detection and LiDAR segmentation, SUNSET should be easily expandable with these nodes.
 Every node in our artifact implements the interfaces so that a managing system can adapt the respective node.
 These nodes inherit from a common [base class](./ros_ws/src/base/python_base_class/python_base_class/engel_base_class.py) which itself inherits from [ROS2 lifecycle nodes](https://foxglove.dev/blog/how-to-use-ros2-lifecycle-nodes) and extends the functionality so that every node provides interfaces for:
 - Reparametrization (based on ROS2 parameters)
@@ -84,10 +96,10 @@ __Activating / Deactivating__: While activating, the base class creates all comm
 
 __Redeploy__: To redeploy, the node should receive a lifecycle transition _SHUTDOWN_. The process will be exited cleanly and the managing system is responsible to relaunch the node with the respective [launch script](./ros_ws/src/base/managed_subsystem/launch/) that is needed for every ROS node present in the system.
 
-
+Based on this base class, new nodes for object detection and LiDAR segmentation can be added to SUNSET.
 For examples how to use the base class to extend our artifact, follow the instructions in the next section.
 
-## Communication configuration
+### Communication configuration
 
 An example on how to configure the communication for your node is shown in [here](./ros_ws/src/managed_subsystem/managed_subsystem/config/camera_config.py)
 
@@ -143,7 +155,7 @@ In case you need a callback for the communication way, the name of the callback 
 If you want that your communication is always available (ONLY IN RARE CASES!), you can set the `always_on` parameter to True.
 
 
-## Parameter configuration
+### Parameter configuration
 
 For parameters there is a central config file that is built like parameter files are usually used in ROS2 (see [ROS2 documentation](https://roboticsbackend.com/ros2-yaml-params/))
 

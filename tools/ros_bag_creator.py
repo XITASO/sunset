@@ -45,6 +45,7 @@ class ImageToRosbag(Node):
         writer.create_topic(topic_info)
        
 
+        # NOTE: Here you can add your own data loader if you want to use a different dataset for SUNSET
         # Get list of image files in the data folder
         rgb_files = sorted([f for f in os.listdir(os.path.join(self.data_folder, "rgb")) if f.endswith(('.png', '.jpg', '.jpeg'))])
         depth_files = sorted([f for f in os.listdir(os.path.join(self.data_folder, "depth")) if f.endswith(('.png', '.jpg', '.jpeg'))])

@@ -120,7 +120,9 @@ def round_to_significant_figures(num: float, sig_figs: int = 3) -> str:
 
 def calculate_unnecessary_redeploys(df: pd.DataFrame):
     try:
-        redeploys_necessary = len(df[(df["source"] == "scenario_executor") & (df["gt_failure_name"].str.contains("hard"))])
+        redeploys_necessary = len(df[(df["source"] == "scenario_executor") & (df["gt_failure_name"].str.contains("hardware_disconnect"))])
+        redeploys_necessary += len(df[(df["source"] == "scenario_executor") & (df["gt_failure_name"].str.contains("memory_leakage"))])
+        redeploys_necessary += len(df[(df["source"] == "scenario_executor") & (df["gt_failure_name"].str.contains("gpu_failure"))])
         redeploys_performed = len(df[(df["source"] == "planning") & (df["strategy_name"].str.contains("redeploy"))])
         return redeploys_performed - redeploys_necessary
     except:

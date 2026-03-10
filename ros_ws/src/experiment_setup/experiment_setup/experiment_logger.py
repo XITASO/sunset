@@ -74,7 +74,7 @@ class ExperimentLoggerNode(ENGELBaseClass):
         """
         new_data = []
         current_scenario = str(getattr(log_msg, "scenario", "") or "").strip()
-        self.logger.info(f"Logger callback: {self.log_file_path}")
+        self.logger.debug(f"Logger callback: {self.log_file_path}")
 
         create_or_rotate = False
         if current_scenario:
