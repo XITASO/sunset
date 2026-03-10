@@ -12,7 +12,11 @@ if [ "${1:-}" = "cpu" ]; then
     USE_CPU=true
 else
     docker build . -t mapek_bt -f ./Dockerfile.cuda
-    docker_arg="--gpus=all"
+    if [ -n "${SLURM_JOB_GPUS:-}" ]; then
+        docker_arg="--gpus device=${SLURM_JOB_GPUS}"
+    else
+        docker_arg="--gpus=all"
+    fi
 fi
 
 echo "Build is done"

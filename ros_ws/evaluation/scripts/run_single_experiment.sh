@@ -47,6 +47,23 @@ PGID3=$(ps -o pgid= -p $PID3 | tr -d ' ')
 
 sleep 2
 
+max_attempts=10
+attempt=0
+
+while [[ $attempt -lt $max_attempts ]]; do
+    state=$(ros2 lifecycle get /managed_subsystem/camera)
+    
+    if [[ "$state" == *"active [3]"* ]]; then
+        echo "Camera node is active. Proceeding with the experiment."
+        break
+    else
+        echo "Camera node is not active. Current state: $state"
+        echo "Waiting for camera to become active... (attempt $((attempt + 1))/$max_attempts)"
+        attempt=$((attempt + 1))
+        sleep 2
+    fi
+done
+
 if [[ "$MANAGING_SUBSYSTEM" == "baseline" ]]; then
     echo "Starting managing subsystem: baseline"
     # Start the managing subsystem
@@ -78,7 +95,7 @@ trap cleanup EXIT
 
 # Simulate script work
 echo "All processes have started..."
-sleep 100
+sleep 150
 
 rm ~/parameters.csv
 echo "Experiment finished."

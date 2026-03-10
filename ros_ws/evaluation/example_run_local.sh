@@ -1,6 +1,6 @@
 #!/bin/bash
 
-REPEAT=50
+REPEAT=54
 
 if [ "$1" == "gpu" ] || [ "$1" == "cpu" ];
 then

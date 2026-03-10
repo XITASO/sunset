@@ -19,7 +19,11 @@ if [ "$1" = "cpu" ]; then
     docker_image="rossunset/sunset-artifact:cpu"
 else
     USE_CPU=false
-    docker_arg="--gpus=all"
+    if [ -n "${SLURM_JOB_GPUS:-}" ]; then
+        docker_arg="--gpus device=${SLURM_JOB_GPUS}"
+    else
+        docker_arg="--gpus=all"
+    fi
     docker_image="rossunset/sunset-artifact:cuda"
 fi
 

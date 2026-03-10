@@ -24,8 +24,9 @@ If you want to run this artifact on the GPU, make sure that you have installed t
 }
 ```
 
-Note: This has been thoroughly tested under WSL2 and native Ubuntu 22.04.
+This has been thoroughly tested under WSL2 and native Ubuntu 22.04.
 As everything is containerized in Docker, this should not be a problem as long as you have docker running and a CLI that supports `docker run/build` commands.
+Note: If you are running this on a macOS, you might have to add `--platform linux/amd64` in the scripts.
 
 ## Additional data
 We use pretrained models and a ROS bag that replays the data which the pipeline uses.
@@ -40,7 +41,7 @@ cd ros_ws && mkdir .data && cd .data
 
 
 ```bash
-scp seams-reviewer@65.108.55.103:/home/seams-reviewer/data.zip .
+scp sunset@37.27.244.221:/home/sunset/data.zip .
 unzip data.zip
 ```
 
@@ -68,6 +69,9 @@ The logs will be stored in a folder `log_dump` next to the ros_ws directory.
 
 Run the experiment from the root of the repository with one of the two following options (GPU or CPU). 
 We recommend to use the GPU since there is a neural network running in SUNSET that runs smoother on the GPU.
+
+Note: We also support SLURM with [this script](./slurm.sh)
+
 ### First check to see if everything is running
 
 #### Running on GPU

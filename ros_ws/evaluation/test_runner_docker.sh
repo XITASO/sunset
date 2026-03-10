@@ -13,10 +13,13 @@ if [ "${1:-}" = "cpu" ]; then
     docker_image="rossunset/sunset-artifact:cpu"
 else
     USE_CPU=false
-    docker_arg="--gpus=all"
+    if [ -n "${SLURM_JOB_GPUS:-}" ]; then
+        docker_arg="--gpus device=${SLURM_JOB_GPUS}"
+    else
+        docker_arg="--gpus=all"
+    fi
     docker_image="rossunset/sunset-artifact:cuda"
 fi
 
 docker run ${docker_arg} -v ./log_dump:/home/dockuser/ros_ws/log_dump -v ./ros_ws:/ros_ws --rm --name sunset_run ${docker_image} evaluation/scripts/run_single_experiment.sh baseline ${USE_CPU}
-
 
