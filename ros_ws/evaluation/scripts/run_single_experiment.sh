@@ -95,7 +95,7 @@ trap cleanup EXIT
 
 # Simulate script work
 echo "All processes have started..."
-sleep 150
+sleep 100
 
 rm ~/parameters.csv
 echo "Experiment finished."

@@ -37,7 +37,7 @@ All of the data are provided on a server. In the following are the instructions 
 cd ros_ws && mkdir .data && cd .data
 ```
 
-2. Download the segmentation models and the ros bags with test data from the a server with the scp command (password `seams`):
+2. Download the segmentation models and the ros bags with test data from the a server with the scp command (password `sunset`):
 
 
 ```bash
