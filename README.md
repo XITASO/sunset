@@ -2,8 +2,8 @@
 
 ## Further documentation
 For detailed information 
-- about the system, how to evaluate experiments and how to extend the artifact, we refer to this [documentation](./system_description.md).
-- about the managing system that is provided with this artifact and how you can integrate your own, we refer to this [documentation](./managing_systems.md)
+- about the system, how to evaluate experiments and how to extend the artifact, we refer to this [documentation](./docs/system_description.md).
+- about the managing system that is provided with this artifact and how you can integrate your own, we refer to this [documentation](./docs/managing_systems.md)
 
 ## Requirements
 

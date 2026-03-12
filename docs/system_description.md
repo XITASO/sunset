@@ -1,10 +1,8 @@
 # System description
 This exemplar builds a sensor fusion based perception pipeline.
 The components of the system are shown below and further described in the following.
-Raw sensor data are provided by the ROS bag that you download as described [here](#additional-data).
 
-
-For each node in the system, we can inject uncertainties.
+For each node in the system, we can inject faults.
 This can be done by setting a parameter of the respective node to a value that leads to a symptom that can be detected.
 
 ![system_overview](./figures/scenario.png)
@@ -17,8 +15,8 @@ The camera node is responsible for providing RGB images and is able to artificia
 
 Use the parameter 
 - `image_degradation` to set the degradiation from `0.0=no degradation` to `1.0=maximum degradation`. Can be resolved by using image enhancement. An internal timer will reset the image degradation to 0.
-- `do_drop_camera` to drop images, can be resolved by restarting the node
-- `do_hard_drop_camera` to drop images, can only be resolved by redeploying the node
+- `camera_driver_issue` to drop images, can be resolved by restarting the node
+- `hardware_disconnect` to drop images, can only be resolved by redeploying the node
 
 ## Depth node
 
@@ -37,15 +35,15 @@ The sensor fusion node synchronizes the data streams from the camera, depth and 
 Use the parameter
 - `topic_camera_input` to set the rgb input to either `/rgb_camera` or `/rgb_enhanced`
 - `modality` to set the fusion to `0=fusion`, `1=rgb` or `2=depth`.
-- `do_drop_sensor_fusion` to drop images, can be resolved by restarting the node
-- `do_hard_drop_sensor_fusion` to drop images, can only be resolved by redeploying the node
+- `sync_issue` to drop images, can be resolved by restarting the node
+- `memory_leakage` to drop images, can only be resolved by redeploying the node
 
 ## Segmentation node
 
 The Segmentation node takes the fused data as input and outputs a predicted segmentation.
 Use the parameter
-- `do_drop_segmentation` to drop images, can be resolved by restarting the node
-- `do_hard_drop_segmentation` to drop images, can only be resolved by redeploying the node
+- `cuda_out_of_memory` to drop images, can be resolved by restarting the node
+- `gpu_failure` to drop images, can only be resolved by redeploying the node
 
 # Supplementary information experiments
 
@@ -55,11 +53,11 @@ Use the parameter
 
 ## Scenario executor
 
-[This node](./ros_ws/src/experiment_setup/experiment_setup/scenario_executor.py) will introduce uncertainties to the system.
-The uncertainties introduced are described in [scenario files](./ros_ws/src/experiment_setup/resources/scenarios/).
+[This node](./ros_ws/src/experiment_setup/experiment_setup/scenario_executor.py) will introduce faults to the system.
+The faults introduced are described in [scenario files](./ros_ws/src/experiment_setup/resources/scenarios/).
 The scenario executor will choose the next scenario that has not been executed yet, i.e., which can not be found in the `log_dump` folder.
 
-We use a set of 50 scenario files (`/ros_ws/src/experiment_setup/resources/scenarios`) each introducing three uncertainties at the same time.
+We use a set of 50 scenario files (`/ros_ws/src/experiment_setup/resources/scenarios`) each introducing three faults at the same time.
 Therefore, every managing system is evaluated on identical scenarios. 
 This keeps the results comparable and repeatable.
 
@@ -166,7 +164,7 @@ camera_node:
   ros__parameters:
     param1: 2.3
 
-lidar_node:
+depth_node:
   ros__parameters:
     param2: 1
 
